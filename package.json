@@ -1,0 +1,24 @@
+{
+  "name": "nes-mapper-lookup",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/build.js",
+  "type": "module",
+  "scripts": {
+    "build": "node src/build.js",
+    "publish": "aws s3 cp dist/nesMapperLookup.html s3://s3.yo1.dog/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yo1dog/nes-mapper-lookup.git"
+  },
+  "author": "yo1dog",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yo1dog/nes-mapper-lookup/issues"
+  },
+  "homepage": "https://github.com/yo1dog/nes-mapper-lookup#readme",
+  "dependencies": {
+    "fast-xml-parser": "^4.0.11"
+  }
+}

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NES Mapper Lookup</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    table {
+       border-collapse: collapse;
+    }
+    table td {
+      padding: 4pt 10pt;
+    }
+    table th {
+      padding: 4pt 10pt;
+    }
+    .monospace {
+      font-family: 'Courier New', Courier, monospace;
+    }
+    .hidden {
+      display: none;
+    }
+    .odd {
+      background-color: #E4F4FF;
+    }
+  </style>
+</head>
+<body>
+  <h1>NES Mapper Lookup</h1>
+  <p>by <a href="https://github.com/yo1dog">yo1dog</a></p>
+  <p>Data provided by <a href="https://no-intro.org/">No-Intro</a> and <a href="https://forums.nesdev.org/viewtopic.php?t=19940">NES2.0 DB</a>.</p>
+  <p><strong>Note:</strong> All sizes are in binary kilobytes (8192 bits). CRC32 hash is of headless ROM.</p>
+  
+  <br />
+  
+  <p>
+    Filter:
+    <input id="filterInput" type="text" />
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>CRC32</th>
+        <th>Name</th>
+        <th>Mapper</th>
+        <th>PRG</th>
+        <th>CHR</th>
+        <th>RAM</th>
+        <th>Mirror</th>
+      </tr>
+    </thead>
+    <tbody id="entryTableBody"></tbody>
+  </table>
+  
+  <script>
+    /**
+    @typedef {{
+      romCRC: string;
+      name?: string;
+      mapperType?: string;
+      prgSizeKB?: number;
+      chrSizeKB?: number;
+      ramSizeKB?: number;
+      mirroring?: 'V' | 'H';
+      
+      row: HTMLTableRowElement;
+      filterKey?: string;
+    }} LookupEntry
+    */
+    
+    /** @type {LookupEntry[]} */
+    const lookupEntries = __LOOKUP_ENTIRES__;
+    
+    /** @type {HTMLTableSectionElement} */
+    const entryTable = document.getElementById('entryTableBody');
+    for (let i = 0; i < lookupEntries.length; ++i) {
+      const lookupEntry = lookupEntries[i];
+      const row = entryTable.insertRow();
+      if (i % 2 === 1) {
+        row.classList.add('odd');
+      }
+      
+      makeMonospace(row.insertCell()).innerText = lookupEntry.romCRC;
+      row.insertCell().innerText = lookupEntry.name || '???';
+      makeMonospace(row.insertCell()).innerText = lookupEntry.mapperType || '???';
+      makeMonospace(row.insertCell()).innerText = lookupEntry.prgSizeKB?.toString() || '-';
+      makeMonospace(row.insertCell()).innerText = lookupEntry.chrSizeKB?.toString() || '-';
+      makeMonospace(row.insertCell()).innerText = lookupEntry.ramSizeKB?.toString() || '-';
+      makeMonospace(row.insertCell()).innerText = lookupEntry.mirroring || '-';
+      
+      lookupEntry.row = row;
+      lookupEntry.filterKey = lookupEntry.name?.toLowerCase();
+    }
+    
+    /** @type {HTMLInputElement} */
+    const filterInput = document.getElementById('filterInput');
+    filterInput.addEventListener('input', debounce(200, filterEntires));
+    if (filterInput.value) {
+      filterEntires();
+    }
+    
+    function filterEntires() {
+      const filterTokens = tokenize(filterInput.value);
+      
+      let visibleIndex = 0;
+      for (const lookupEntry of lookupEntries) {
+        const doesMatchFilter = (
+          filterTokens.length === 0 ||
+          matchTokens(filterTokens, lookupEntry.filterKey)
+        );
+        if (doesMatchFilter) {
+          lookupEntry.row.classList.remove('hidden');
+          lookupEntry.row.classList.toggle('odd', visibleIndex % 2 === 1);
+          ++visibleIndex;
+        }
+        else {
+          lookupEntry.row.classList.add('hidden');
+        }
+      }
+    };
+    
+    /** @param {string} str */
+    function tokenize(str) {
+      if (!str) return [];
+      str = str.trim().toLowerCase();
+      return str.split(/\s+/).filter(str => str);
+    }
+    
+    /**
+     * @param {string[]} tokens
+     * @param {string | undefined} str
+     */
+    function matchTokens(tokens, str) {
+      if (!str) return false;
+      for (const token of tokens) {
+        if (!str.includes(token)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    
+    function debounce(durMS, fn) {
+      let timerID;
+      return () => {
+        clearTimeout(timerID);
+        timerID = setTimeout(fn, durMS);
+      }
+    }
+    
+     /** @param {HTMLElement} x */
+    function makeMonospace(x) {
+      x.classList.add('monospace');
+      return x;
+    }
+  </script>
+</body>
+</html>
