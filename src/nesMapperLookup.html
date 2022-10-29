@@ -12,14 +12,20 @@
     table {
        border-collapse: collapse;
     }
-    table td {
-      padding: 4pt 10pt;
-    }
-    table th {
+    td, th {
       padding: 4pt 10pt;
     }
     .monospace {
       font-family: 'Courier New', Courier, monospace;
+    }
+    td:nth-child(3) {
+      white-space: nowrap;
+    }
+    td:nth-child(4), td:nth-child(5), td:nth-child(6) {
+      text-align: right;
+    }
+    td:nth-child(7) {
+      text-align: center;
     }
     .hidden {
       display: none;
@@ -86,7 +92,7 @@
       
       makeMonospace(row.insertCell()).innerText = lookupEntry.romCRC;
       row.insertCell().innerText = lookupEntry.name || '???';
-      makeMonospace(row.insertCell()).innerText = lookupEntry.mapperType || '???';
+      row.insertCell().innerText = lookupEntry.mapperType || '???';
       makeMonospace(row.insertCell()).innerText = lookupEntry.prgSizeKB?.toString() || '-';
       makeMonospace(row.insertCell()).innerText = lookupEntry.chrSizeKB?.toString() || '-';
       makeMonospace(row.insertCell()).innerText = lookupEntry.ramSizeKB?.toString() || '-';
