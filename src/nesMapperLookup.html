@@ -15,17 +15,17 @@
     td, th {
       padding: 4pt 10pt;
     }
-    .monospace {
-      font-family: 'Courier New', Courier, monospace;
-    }
     td:nth-child(3) {
       white-space: nowrap;
     }
-    td:nth-child(4), td:nth-child(5), td:nth-child(6) {
+    td:nth-child(4), td:nth-child(5) {
       text-align: right;
     }
-    td:nth-child(7) {
+    td:nth-child(6), td:nth-child(7) {
       text-align: center;
+    }
+    td:nth-child(1), td:nth-child(4), td:nth-child(5), td:nth-child(6), td:nth-child(7) {
+      font-family: 'Courier New', Courier, monospace;
     }
     .hidden {
       display: none;
@@ -55,8 +55,8 @@
         <th>Mapper</th>
         <th>PRG</th>
         <th>CHR</th>
-        <th>RAM</th>
         <th>Mirror</th>
+        <th>Battery</th>
       </tr>
     </thead>
     <tbody id="entryTableBody"></tbody>
@@ -68,10 +68,10 @@
       romCRC: string;
       name?: string;
       mapperType?: string;
-      prgSizeKB?: number;
-      chrSizeKB?: number;
-      ramSizeKB?: number;
-      mirroring?: 'V' | 'H';
+      prgROMSizeKB?: number;
+      chrROMSizeKB?: number;
+      mirroring?: string;
+      usesBattery: boolean;
       
       row: HTMLTableRowElement;
       filterKey?: string;
@@ -90,13 +90,13 @@
         row.classList.add('odd');
       }
       
-      makeMonospace(row.insertCell()).innerText = lookupEntry.romCRC;
+      row.insertCell().innerText = lookupEntry.romCRC;
       row.insertCell().innerText = lookupEntry.name || '???';
       row.insertCell().innerText = lookupEntry.mapperType || '???';
-      makeMonospace(row.insertCell()).innerText = lookupEntry.prgSizeKB?.toString() || '-';
-      makeMonospace(row.insertCell()).innerText = lookupEntry.chrSizeKB?.toString() || '-';
-      makeMonospace(row.insertCell()).innerText = lookupEntry.ramSizeKB?.toString() || '-';
-      makeMonospace(row.insertCell()).innerText = lookupEntry.mirroring || '-';
+      row.insertCell().innerText = lookupEntry.prgROMSizeKB?.toString() || '-';
+      row.insertCell().innerText = lookupEntry.chrROMSizeKB?.toString() || '-';
+      row.insertCell().innerText = lookupEntry.mirroring || '-';
+      row.insertCell().innerText = lookupEntry.usesBattery? 'Y' : 'N';
       
       lookupEntry.row = row;
       lookupEntry.filterKey = lookupEntry.name?.toLowerCase();
@@ -156,12 +156,6 @@
         clearTimeout(timerID);
         timerID = setTimeout(fn, durMS);
       }
-    }
-    
-     /** @param {HTMLElement} x */
-    function makeMonospace(x) {
-      x.classList.add('monospace');
-      return x;
     }
   </script>
 </body>

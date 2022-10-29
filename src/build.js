@@ -69,10 +69,10 @@ for (const game of nes2DBXML.nes20db.game) {
     romCRC,
     name,
     mapperType: inesMapperTypeMap.get(game.pcb['@_mapper']),
-    prgSizeKB: game.prgrom? (parseInt(game.prgrom['@_size'], 10) / 1024) : undefined,
-    chrSizeKB: game.chrrom? (parseInt(game.chrrom['@_size'], 10) / 1024) : undefined,
-    ramSizeKB: game.prgram? (parseInt(game.prgram['@_size'], 10) / 1024) : undefined,
+    prgROMSizeKB: game.prgrom? (parseInt(game.prgrom['@_size'], 10) / 1024) : undefined,
+    chrROMSizeKB: game.chrrom? (parseInt(game.chrrom['@_size'], 10) / 1024) : undefined,
     mirroring: game.pcb['@_mirroring'],
+    usesBattery: game.pcb['@_battery'] === '1',
   });
 }
 
@@ -118,6 +118,11 @@ await fs.writeFile(
 @typedef {{
   nes20db: {
     game: {
+      rom: {
+        '@_size': string;
+        '@_crc32': string;
+        '@_sha1': string;
+      };
       prgrom?: {
         '@_size': string;
         '@_crc32': string;
@@ -130,12 +135,27 @@ await fs.writeFile(
         '@_sha1': string;
         '@_sum16': string;
       };
-      rom: {
+      miscrom?: {
+        '@_size': string;
+        '@_crc32': string;
+        '@_sha1': string;
+        '@_number': string;
+      };
+      trainer?: {
         '@_size': string;
         '@_crc32': string;
         '@_sha1': string;
       };
       prgram?: {
+        '@_size': string;
+      };
+      prgnvram?: {
+        '@_size': string;
+      };
+      chrram?: {
+        '@_size': string;
+      };
+      chrnvram?: {
         '@_size': string;
       };
       pcb: {
@@ -144,12 +164,16 @@ await fs.writeFile(
         '@_mirroring': string;
         '@_battery': string;
       };
-      console: {
+      console?: {
         '@_type': string;
         '@_region': string;
       };
-      expansion: {
+      expansion?: {
         '@_type': string;
+      };
+      vs?: {
+        '@_hardware': string;
+        '@_ppu': string;
       };
     }[];
   };
@@ -159,9 +183,9 @@ await fs.writeFile(
   romCRC: string;
   name?: string;
   mapperType?: string;
-  prgSizeKB?: number;
-  chrSizeKB?: number;
-  ramSizeKB?: number;
+  prgROMSizeKB?: number;
+  chrROMSizeKB?: number;
   mirroring?: string;
+  usesBattery: boolean;
 }} LookupEntry
 */
