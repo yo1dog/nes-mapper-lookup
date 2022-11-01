@@ -26,8 +26,11 @@ const IGNORE_NOINTRO_NAME_REGEXP = [
 ];
 /** @type {string[]} */
 const IGNORE_ROM_CRC32 = [
+  'D20775DA', // City Connection (Japan) (Virtual Console, Switch Online)
   '3413E33B', // Seicross (Japan) (Virtual Console)
   'CAA76927', // Yoshi's Cookie (Europe) (Virtual Console)
+  '6C039D11', // Nantettatte!! Baseball + Nantettatte!! Baseball - Ko-Game Cassette - '91 Kaimaku Hen (Japan)
+  'A5275B36', // Nantettatte!! Baseball + Nantettatte!! Baseball - Ko-Game Cassette - OB All Star Hen (Japan)
   '4B6EF399', // Karaoke Studio Senyou Cassette - Top Hit 20 Vol. 1 (Japan)
   '50F3E338', // Karaoke Studio Senyou Cassette - Top Hit 20 Vol. 2 (Japan)
 ];
@@ -261,9 +264,10 @@ await fs.writeFile(
 
 /**
  * @param {Game} game 
- * @param {number} byteLength 
+ * @param {number} prgROMByteLength 
+ * @param {number} chrROMByteLength 
  */
-async function createPartialCRC32Hash(game, byteLength) {
+async function createPartialCRC32Hash(game, prgROMByteLength, chrROMByteLength) {
   const filename = game.filename.slice(0, -4) + '.unh';
   const filepath = pathUtil.join(
     /**@type {string}*/(HEADERLESS_ROM_DIR),
@@ -281,11 +285,35 @@ async function createPartialCRC32Hash(game, byteLength) {
       throw err;
     }
     
-    const result = await romFile.read({buffer: Buffer.alloc(byteLength), length: byteLength});
-    if (result.bytesRead !== byteLength) {
-      throw new Error(`Read incorrect byte length: ${result.bytesRead} instead of ${byteLength}`);
+    const buffer = Buffer.alloc(prgROMByteLength + chrROMByteLength);
+    
+    // Read PRG ROM.
+    if (prgROMByteLength > 0) {
+      const result = await romFile.read({
+        buffer,
+        offset: 0,
+        position: 0,
+        length: prgROMByteLength
+      });
+      if (result.bytesRead !== prgROMByteLength) {
+        throw new Error(`Read incorrect byte length: ${result.bytesRead} instead of ${prgROMByteLength}`);
+      }
     }
-    return crc32(result.buffer).toString(16).padStart(8, '0').toUpperCase();
+    
+    // Read CHR ROM.
+    if (chrROMByteLength > 0) {
+      const result = await romFile.read({
+        buffer,
+        offset: prgROMByteLength,
+        position: game.prgROMSizeBytes,
+        length: chrROMByteLength
+      });
+      if (result.bytesRead !== chrROMByteLength) {
+        throw new Error(`Read incorrect byte length: ${result.bytesRead} instead of ${chrROMByteLength}`);
+      }
+    }
+    
+    return crc32(buffer).toString(16).padStart(8, '0').toUpperCase();
   }
   finally {
     romFile?.close();
@@ -300,7 +328,7 @@ async function addGameToBranch(branch, game) {
   // NOTE: Because we sort games by size, we don't have to worry about reading past the end of a
   // file. That is, because we process the smallest games first, subsequent games will always be
   // the same size as or larger than all existing branch byte lengths.
-  const crc32PartialHash = await createPartialCRC32Hash(game, branch.prgROMByteLength + branch.chrROMByteLength);
+  const crc32PartialHash = await createPartialCRC32Hash(game, branch.prgROMByteLength, branch.chrROMByteLength);
   
   const childBranch = branch.branchDict[crc32PartialHash];
   if (childBranch) {
