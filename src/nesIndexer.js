@@ -185,7 +185,7 @@ console.log(`${nointroXML.datafile.game.length - games.length - numNES2HeaderDat
 // Create index tree.
 /** @type {IndexBranch} */
 const indexTrunk = {
-  prgROMByteLength: 512,
+  prgROMByteLength: 8*1024,
   chrROMByteLength: 0,
   leafDict: {},
   branchDict: {},
