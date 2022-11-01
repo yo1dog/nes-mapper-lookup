@@ -225,17 +225,19 @@ if (missingFileErrors.length > 0) {
 // Find and report ambigous games.
 /** @type {{crc32PartialHash: string; leaf: IndexLeaf}[]} */
 const ambiguities = [];
+let numAmbiguousGames = 0;
 itterateIndex(indexTrunk, branch => {
   for (const crc32PartialHash in branch.leafDict) {
     const leaf = branch.leafDict[crc32PartialHash];
     if (leaf.games.length > 1) {
       ambiguities.push({crc32PartialHash, leaf});
+      numAmbiguousGames += leaf.games.length;
     }
   }
 });
 
 if (ambiguities.length > 0) {
-  console.log(`Failed to differentiate: ${ambiguities.reduce((sum, x) => sum + x.leaf.games.length, 0)}`);
+  console.log(`Failed to differentiate: ${numAmbiguousGames}`);
   for (const {crc32PartialHash, leaf} of ambiguities) {
     console.log(`${crc32PartialHash} PRG:${leaf.prgROMSizeBytes} CHR:${leaf.chrROMSizeBytes}`);
     for (let i = 0; i < leaf.games.length; ++i) {
@@ -244,6 +246,10 @@ if (ambiguities.length > 0) {
     }
   }
 }
+
+console.log(`Indexed ${games.length - missingFileErrors.length - numAmbiguousGames}/${games.length}`);
+console.log(`${missingFileErrors.length} files missing`);
+console.log(`${numAmbiguousGames} ambiguous`);
 
 // Generate JSON
 await fs.writeFile(
