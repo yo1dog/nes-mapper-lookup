@@ -1,7 +1,24 @@
 import * as fs from 'node:fs/promises';
 import {XMLParser} from 'fast-xml-parser';
 
-const INCLUDE_NAMELESS = false;
+const IGNORE_NAMELESS = true;
+/** @type {RegExp[]} */
+const IGNORE_NES2DB_NAME_REGEXP = [
+  /^Bootleg Singles\\/,
+  /^Bootleg Hacks\\/,
+  /^Homebrew\\/,
+  /^Compatibility Hacks\\/,
+  /^Modern\\/,
+  /^Bad Dumps\\/,
+  /^BIOS\\/,
+];
+/** @type {RegExp[]} */
+const IGNORE_NOINTRO_NAME_REGEXP = [
+  /\(Virtual Console\)/
+];
+/** @type {string[]} */
+const IGNORE_ROM_CRC32 = [
+];
 
 // Map of iNES mapper number to RetroBlaster mapper type.
 const inesMapperTypeMap = new Map(Object.entries({
@@ -25,54 +42,56 @@ const inesMapperTypeMap = new Map(Object.entries({
   )
 ));
 
-const xmlParser = new XMLParser({ignoreAttributes: false});
+const xmlParser = new XMLParser({ignoreAttributes: false, commentPropName: '_comment', attributeNamePrefix: ''});
 
 // Read and parse nointro XML.
 const nointroXMLStr = await fs.readFile(
   new URL('../lib/Nintendo - Nintendo Entertainment System (Headerless) (20221029-071237).dat', import.meta.url),
   'utf8'
 );
-
 /** @type {NoIntro} */
 const nointroXML = xmlParser.parse(nointroXMLStr);
 
-// Map of ROM headerless CRC hash to ROM name.
-/** @type {Map<string, string>} */
-const crcFilenameMap = new Map();
-for (const game of nointroXML.datafile.game) {
-  const romCRC = game.rom['@_crc']?.toUpperCase();
-  if (!romCRC) continue;
-  
-  crcFilenameMap.set(romCRC, game.rom['@_name']);
-}
-
-// Read and parse nointro XML.
+// Read and parse NES2.0 DB XML.
 const nes2DBXMLStr = await fs.readFile(
   new URL('../lib/nes20db.xml', import.meta.url),
   'utf8'
 );
-
 /** @type {NES2DB} */
 const nes2DBXML = xmlParser.parse(nes2DBXMLStr);
+
+// Map CRC32 to No-Intro game.
+const noIntroGameMap = new Map();
+for (const noIntroGame of nointroXML.datafile.game) {
+  if (!noIntroGame.rom.crc) continue;
+  noIntroGameMap.set(noIntroGame.rom.crc.toUpperCase(), noIntroGame);
+}
 
 // Generate lookup entires.
 /** {@type {LookupEntry[]} */
 const lookupEntires = [];
 for (const game of nes2DBXML.nes20db.game) {
-  const romCRC = game.rom['@_crc32']?.toUpperCase();
-  if (!romCRC) continue;
+  const romCRC32 = game.rom.crc32?.toUpperCase();
+  if (!romCRC32) continue;
   
-  const name = crcFilenameMap.get(romCRC);
-  if (!name && !INCLUDE_NAMELESS) continue;
+  const noIntroName = noIntroGameMap.get(romCRC32)?.name;
+  
+  if (shouldIgnoreGame(
+    game._comment.trim(),
+    noIntroName,
+    romCRC32,
+  )) {
+    continue;
+  }
   
   lookupEntires.push({
-    romCRC,
-    name,
-    mapperType: inesMapperTypeMap.get(game.pcb['@_mapper']),
-    prgROMSizeKB: game.prgrom? (parseInt(game.prgrom['@_size'], 10) / 1024) : undefined,
-    chrROMSizeKB: game.chrrom? (parseInt(game.chrrom['@_size'], 10) / 1024) : undefined,
-    mirroring: game.pcb['@_mirroring'],
-    usesBattery: game.pcb['@_battery'] === '1',
+    romCRC32,
+    name: noIntroName,
+    mapperType: inesMapperTypeMap.get(game.pcb.mapper),
+    prgROMSizeKB: game.prgrom? (parseIntStrict(game.prgrom.size) / 1024) : undefined,
+    chrROMSizeKB: game.chrrom? (parseIntStrict(game.chrrom.size) / 1024) : undefined,
+    mirroring: game.pcb.mirroring,
+    usesBattery: parseBoolStrict(game.pcb.battery),
   });
 }
 
@@ -96,20 +115,66 @@ await fs.writeFile(
   'utf8'
 );
 
+
+/**
+ * @param {string} nes2Name 
+ * @param {string | undefined} noIntroName 
+ * @param {string} romCRC32 
+ * @returns 
+ */
+function shouldIgnoreGame(nes2Name, noIntroName, romCRC32) {
+  for (const regexp of IGNORE_NES2DB_NAME_REGEXP) {
+    if (regexp.test(nes2Name)) {
+      return true;
+    }
+  }
+  
+  if (noIntroName) {
+    for (const regexp of IGNORE_NOINTRO_NAME_REGEXP) {
+      if (regexp.test(noIntroName)) {
+        return true;
+      }
+    }
+  }
+  else if (IGNORE_NAMELESS) {
+    return true;
+  }
+  
+  for (const iRomCRC32 of IGNORE_ROM_CRC32) {
+    if (romCRC32 === iRomCRC32) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/** @param {string} str */
+function parseIntStrict(str) {
+  if (!/^\d+$/.test(str)) throw new Error(`Invalid integer: ${str}`);
+  return parseInt(str, 10);
+}
+/** @param {string} str */
+function parseBoolStrict(str) {
+  if (str === '0') return false;
+  if (str === '1') return true;
+  throw new Error(`Invalid boolean: ${str}`);
+}
+
 /**
 @typedef {{
   datafile: {
     game: {
       description: string;
-      '@_name': string;
+      name: string;
       rom: {
-        '@_name': string;
-        '@_size': string;
-        '@_crc': string;
-        '@_md5': string;
-        '@_sha1': string;
-        '@_sha256': string;
-        '@_status': string;
+        name: string;
+        size: string;
+        crc: string;
+        md5: string;
+        sha1: string;
+        sha256: string;
+        status: string;
       };
     }[];
   }
@@ -118,69 +183,70 @@ await fs.writeFile(
 @typedef {{
   nes20db: {
     game: {
+      _comment: string;
       rom: {
-        '@_size': string;
-        '@_crc32': string;
-        '@_sha1': string;
+        size: string;
+        crc32: string;
+        sha1: string;
       };
       prgrom?: {
-        '@_size': string;
-        '@_crc32': string;
-        '@_sha1': string;
-        '@_sum16': string;
+        size: string;
+        crc32: string;
+        sha1: string;
+        sum16: string;
       };
       chrrom?: {
-        '@_size': string;
-        '@_crc32': string;
-        '@_sha1': string;
-        '@_sum16': string;
+        size: string;
+        crc32: string;
+        sha1: string;
+        sum16: string;
       };
       miscrom?: {
-        '@_size': string;
-        '@_crc32': string;
-        '@_sha1': string;
-        '@_number': string;
+        size: string;
+        crc32: string;
+        sha1: string;
+        number: string;
       };
       trainer?: {
-        '@_size': string;
-        '@_crc32': string;
-        '@_sha1': string;
+        size: string;
+        crc32: string;
+        sha1: string;
       };
       prgram?: {
-        '@_size': string;
+        size: string;
       };
       prgnvram?: {
-        '@_size': string;
+        size: string;
       };
       chrram?: {
-        '@_size': string;
+        size: string;
       };
       chrnvram?: {
-        '@_size': string;
+        size: string;
       };
       pcb: {
-        '@_mapper': string;
-        '@_submapper': string;
-        '@_mirroring': string;
-        '@_battery': string;
+        mapper: string;
+        submapper: string;
+        mirroring: string;
+        battery: string;
       };
       console?: {
-        '@_type': string;
-        '@_region': string;
+        type: string;
+        region: string;
       };
       expansion?: {
-        '@_type': string;
+        type: string;
       };
       vs?: {
-        '@_hardware': string;
-        '@_ppu': string;
+        hardware: string;
+        ppu: string;
       };
     }[];
   };
 }} NES2DB
 
 @typedef {{
-  romCRC: string;
+  romCRC32: string;
   name?: string;
   mapperType?: string;
   prgROMSizeKB?: number;

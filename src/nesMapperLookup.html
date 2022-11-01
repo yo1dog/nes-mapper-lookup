@@ -65,7 +65,7 @@
   <script>
     /**
     @typedef {{
-      romCRC: string;
+      romCRC32: string;
       name?: string;
       mapperType?: string;
       prgROMSizeKB?: number;
@@ -90,7 +90,7 @@
         row.classList.add('odd');
       }
       
-      row.insertCell().innerText = lookupEntry.romCRC;
+      row.insertCell().innerText = lookupEntry.romCRC32;
       row.insertCell().innerText = lookupEntry.name || '???';
       row.insertCell().innerText = lookupEntry.mapperType || '???';
       row.insertCell().innerText = lookupEntry.prgROMSizeKB?.toString() || '-';
