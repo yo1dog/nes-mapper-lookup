@@ -22,7 +22,7 @@ const IGNORE_ROM_CRC32 = [
 
 // Map of iNES mapper number to RetroBlaster mapper type.
 const inesMapperTypeMap = new Map(Object.entries({
-  'NROM': [1],
+  'NROM': [0],
   'CNROM': [3,185],
   'UxROM': [2,94,180],
   'AxROM': [7],
