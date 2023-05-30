@@ -105,18 +105,27 @@
     /** @type {HTMLInputElement} */
     const filterInput = document.getElementById('filterInput');
     filterInput.addEventListener('input', debounce(200, filterEntires));
+    
+    const initalFilterInputStr = new URLSearchParams(window.location.search).get('q');
+    if (initalFilterInputStr) {
+      filterInput.value = initalFilterInputStr;
+    }
     if (filterInput.value) {
       filterEntires();
     }
     
     function filterEntires() {
-      const filterTokens = tokenize(filterInput.value);
+      const filterInputStr = filterInput.value.trim();
+      const filterTokens = tokenize(filterInputStr);
+      const filterCRC32 = filterInputStr.toUpperCase();
+      history.replaceState(null, '', '?q=' + encodeURIComponent(filterInputStr))
       
       let visibleIndex = 0;
       for (const lookupEntry of lookupEntries) {
         const doesMatchFilter = (
           filterTokens.length === 0 ||
-          matchTokens(filterTokens, lookupEntry.filterKey)
+          matchTokens(filterTokens, lookupEntry.filterKey) ||
+          lookupEntry.romCRC32 === filterCRC32
         );
         if (doesMatchFilter) {
           lookupEntry.row.classList.remove('hidden');
@@ -131,8 +140,8 @@
     
     /** @param {string} str */
     function tokenize(str) {
-      if (!str) return [];
       str = str.trim().toLowerCase();
+      if (str.length === 0) return [];
       return str.split(/\s+/).filter(str => str);
     }
     
